@@ -1,34 +1,56 @@
-<script>
-const options = [
-    "Option 1",
-    "Option 2",
-    "Option 3",
-    "Option 4",
-    "Option 5",
-    "Option 6",
-    "Option 7",
-    "Option 8"
-];
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spinner Wheel</title>
+</head>
+<body>
+  <h1>Spinner Wheel</h1>
 
-let targetIndex = 0;
+  <canvas id="wheel" width="400" height="400"></canvas>
+  <br><br>
 
-let used = localStorage.getItem("spinnerUsed") === "true";
+  <label>
+    <input type="checkbox" id="devMode">
+    Developer Mode
+  </label>
 
-const canvas = document.getElementById("wheel");
-const ctx = canvas.getContext("2d");
-const spinBtn = document.getElementById("spinBtn");
-const result = document.getElementById("result");
+  <select id="devChoice">
+    <option value="0">Option 1</option>
+    <option value="1">Option 2</option>
+    <option value="2">Option 3</option>
+    <option value="3">Option 4</option>
+    <option value="4">Option 5</option>
+    <option value="5">Option 6</option>
+    <option value="6">Option 7</option>
+    <option value="7">Option 8</option>
+  </select>
 
-const center = 200;
-const radius = 190;
-const sliceAngle = (2 * Math.PI) / options.length;
+  <br><br>
+  <button id="spinBtn">Spin</button>
+  <div id="result"></div>
 
-let currentAngle = 0;
+  <script>
+    const options = [
+      "Option 1", "Option 2", "Option 3", "Option 4",
+      "Option 5", "Option 6", "Option 7", "Option 8"
+    ];
 
-function drawWheel() {
-    ctx.clearRect(0, 0, 400, 400);
+    let used = localStorage.getItem("spinnerUsed") === "true";
 
-    for (let i = 0; i < options.length; i++) {
+    const canvas = document.getElementById("wheel");
+    const ctx = canvas.getContext("2d");
+    const spinBtn = document.getElementById("spinBtn");
+    const result = document.getElementById("result");
+
+    const center = 200;
+    const radius = 190;
+    const sliceAngle = (2 * Math.PI) / options.length;
+    let currentAngle = 0;
+
+    function drawWheel() {
+      ctx.clearRect(0, 0, 400, 400);
+
+      for (let i = 0; i < options.length; i++) {
         const start = currentAngle + i * sliceAngle;
         const end = start + sliceAngle;
 
@@ -37,97 +59,90 @@ function drawWheel() {
         ctx.arc(center, center, radius, start, end);
         ctx.closePath();
 
-        ctx.fillStyle = i % 2 ? "#66ccff" : "#ffcc66";
+        ctx.fillStyle = i % 2 === 0 ? "#ffcc66" : "#66ccff";
         ctx.fill();
         ctx.stroke();
 
         ctx.save();
         ctx.translate(center, center);
         ctx.rotate(start + sliceAngle / 2);
-
         ctx.textAlign = "right";
         ctx.fillStyle = "black";
         ctx.font = "16px Arial";
         ctx.fillText(options[i], radius - 15, 5);
-
         ctx.restore();
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(center - 15, 10);
+      ctx.lineTo(center + 15, 10);
+      ctx.lineTo(center, 45);
+      ctx.closePath();
+      ctx.fillStyle = "red";
+      ctx.fill();
     }
 
-    // Pointer
-    ctx.beginPath();
-    ctx.moveTo(center - 15, 10);
-    ctx.lineTo(center + 15, 10);
-    ctx.lineTo(center, 45);
-    ctx.closePath();
-    ctx.fillStyle = "red";
-    ctx.fill();
-}
-
-function spin() {
-    if (used) {
+    function spin() {
+      if (used) {
         result.textContent = "You already used the spinner.";
         return;
-    }
+      }
 
-    const devMode = document.getElementById("devMode").checked;
+      let targetIndex;
 
-    if (devMode) {
+      if (document.getElementById("devMode").checked) {
         targetIndex = Number(document.getElementById("devChoice").value);
-    } else {
+      } else {
         targetIndex = Math.floor(Math.random() * options.length);
-    }
+      }
 
-    used = true;
-    localStorage.setItem("spinnerUsed", "true");
+      used = true;
+      localStorage.setItem("spinnerUsed", "true");
 
-    const pointerAngle = -Math.PI / 2;
-    const targetMiddle = targetIndex * sliceAngle + sliceAngle / 2;
+      const pointerAngle = -Math.PI / 2;
+      const targetMiddle = targetIndex * sliceAngle + sliceAngle / 2;
+      const finalAngle = pointerAngle - targetMiddle + Math.PI * 10;
 
-    const finalAngle =
-        pointerAngle -
-        targetMiddle +
-        Math.PI * 10;
+      const startAngle = currentAngle;
+      const duration = 4000;
+      const startTime = performance.now();
 
-    const startAngle = currentAngle;
-    const duration = 4000;
-    const startTime = performance.now();
-
-    function animate(now) {
+      function animate(now) {
         const t = Math.min((now - startTime) / duration, 1);
         const ease = 1 - Math.pow(1 - t, 3);
 
         currentAngle = startAngle + finalAngle * ease;
-
         drawWheel();
 
         if (t < 1) {
-            requestAnimationFrame(animate);
+          requestAnimationFrame(animate);
         } else {
-            result.textContent = "Result: " + options[targetIndex];
+          result.textContent = "Result: " + options[targetIndex];
         }
+      }
+
+      requestAnimationFrame(animate);
     }
 
-    requestAnimationFrame(animate);
-}
+    spinBtn.addEventListener("click", spin);
 
-spinBtn.addEventListener("click", spin);
-
-document.addEventListener("keydown", (e) => {
-    if (e.key === "F8") {
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "F8") {
         e.preventDefault();
 
         const devMode = document.getElementById("devMode");
         devMode.checked = !devMode.checked;
 
-        result.textContent =
-            "Developer Mode " +
-            (devMode.checked ? "Enabled" : "Disabled");
+        result.textContent = "Developer Mode " + 
+          (devMode.checked ? "Enabled" : "Disabled");
+      }
+    });
+
+    drawWheel();
+
+    if (used) {
+      result.textContent = "You already used the spinner.";
     }
-});
-
-drawWheel();
-
-if (used) {
-    result.textContent = "You already used the spinner.";
-}
-</script>
+  </script>
+</body>
+</html>
