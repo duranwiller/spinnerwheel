@@ -1,148 +1,196 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Spinner Wheel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fortune Spinner</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .wheel-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #ff4757;
+            z-index: 10;
+        }
+        button {
+            margin-top: 30px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #2ed573;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(46, 213, 115, 0.4);
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #26af5f;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background-color: #747d8c;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            height: 30px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Spinner Wheel</h1>
 
-  <canvas id="wheel" width="400" height="400"></canvas>
-  <br><br>
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="400" height="400"></canvas>
+    </div>
+    
+    <button id="spinBtn" onclick="spin()">Spin the Wheel</button>
+    <div id="result"></div>
 
-  <label>
-    <input type="checkbox" id="devMode">
-    Developer Mode
-  </label>
+    <script>
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const resultDiv = document.getElementById('result');
 
-  <select id="devChoice">
-    <option value="0">Option 1</option>
-    <option value="1">Option 2</option>
-    <option value="2">Option 3</option>
-    <option value="3">Option 4</option>
-    <option value="4">Option 5</option>
-    <option value="5">Option 6</option>
-    <option value="6">Option 7</option>
-    <option value="7">Option 8</option>
-  </select>
+        const options = ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6", "Option 7", "Option 8"];
+        const numOptions = options.length;
+        const arcSize = (2 * Math.PI) / numOptions;
+        const colors = ["#ff4757", "#2ed573", "#1e90ff", "#ffa502", "#9b59b6", "#34495e", "#1abc9c", "#e67e22"];
 
-  <br><br>
-  <button id="spinBtn">Spin</button>
-  <div id="result"></div>
+        let currentAngle = 0;
+        let isSpinning = false;
+        let alternateTargetTriggered = false;
 
-  <script>
-    const options = [
-      "Option 1", "Option 2", "Option 3", "Option 4",
-      "Option 5", "Option 6", "Option 7", "Option 8"
-    ];
+        // Draw the static wheel layout
+        function drawWheel() {
+            for (let i = 0; i < numOptions; i++) {
+                const angle = currentAngle + (i * arcSize);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.beginPath();
+                ctx.moveTo(200, 200);
+                ctx.arc(200, 200, 200, angle, angle + arcSize);
+                ctx.lineTo(200, 200);
+                ctx.fill();
 
-    let used = localStorage.getItem("spinnerUsed") === "true";
-
-    const canvas = document.getElementById("wheel");
-    const ctx = canvas.getContext("2d");
-    const spinBtn = document.getElementById("spinBtn");
-    const result = document.getElementById("result");
-
-    const center = 200;
-    const radius = 190;
-    const sliceAngle = (2 * Math.PI) / options.length;
-    let currentAngle = 0;
-
-    function drawWheel() {
-      ctx.clearRect(0, 0, 400, 400);
-
-      for (let i = 0; i < options.length; i++) {
-        const start = currentAngle + i * sliceAngle;
-        const end = start + sliceAngle;
-
-        ctx.beginPath();
-        ctx.moveTo(center, center);
-        ctx.arc(center, center, radius, start, end);
-        ctx.closePath();
-
-        ctx.fillStyle = i % 2 === 0 ? "#ffcc66" : "#66ccff";
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.save();
-        ctx.translate(center, center);
-        ctx.rotate(start + sliceAngle / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "black";
-        ctx.font = "16px Arial";
-        ctx.fillText(options[i], radius - 15, 5);
-        ctx.restore();
-      }
-
-      ctx.beginPath();
-      ctx.moveTo(center - 15, 10);
-      ctx.lineTo(center + 15, 10);
-      ctx.lineTo(center, 45);
-      ctx.closePath();
-      ctx.fillStyle = "red";
-      ctx.fill();
-    }
-
-    function spin() {
-      if (used) {
-        result.textContent = "You already used the spinner.";
-        return;
-      }
-
-      let targetIndex;
-
-      if (document.getElementById("devMode").checked) {
-        targetIndex = Number(document.getElementById("devChoice").value);
-      } else {
-        targetIndex = Math.floor(Math.random() * options.length);
-      }
-
-      used = true;
-      localStorage.setItem("spinnerUsed", "true");
-
-      const pointerAngle = -Math.PI / 2;
-      const targetMiddle = targetIndex * sliceAngle + sliceAngle / 2;
-      const finalAngle = pointerAngle - targetMiddle + Math.PI * 10;
-
-      const startAngle = currentAngle;
-      const duration = 4000;
-      const startTime = performance.now();
-
-      function animate(now) {
-        const t = Math.min((now - startTime) / duration, 1);
-        const ease = 1 - Math.pow(1 - t, 3);
-
-        currentAngle = startAngle + finalAngle * ease;
-        drawWheel();
-
-        if (t < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          result.textContent = "Result: " + options[targetIndex];
+                // Add text labels
+                ctx.save();
+                ctx.fillStyle = "white";
+                ctx.font = "bold 16px sans-serif";
+                ctx.translate(200, 200);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillText(options[i], 180, 5);
+                ctx.restore();
+            }
         }
-      }
 
-      requestAnimationFrame(animate);
-    }
+        // Listen for the secret F8 key override
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F8') {
+                e.preventDefault(); 
+                alternateTargetTriggered = true;
+            }
+        });
 
-    spinBtn.addEventListener("click", spin);
+        // Check if a permanent outcome already exists on page load
+        window.onload = () => {
+            drawWheel();
+            const savedOutcome = localStorage.getItem('wheel_outcome');
+            if (savedOutcome) {
+                spinBtn.disabled = true;
+                resultDiv.innerText = `You already used your spin! Result: ${savedOutcome}`;
+            }
+        };
 
-    document.addEventListener("keydown", function(e) {
-      if (e.key === "F8") {
-        e.preventDefault();
+        function spin() {
+            if (isSpinning) return;
+            
+            // Re-verify lock out condition immediately on button click
+            if (localStorage.getItem('wheel_outcome')) {
+                spinBtn.disabled = true;
+                return;
+            }
 
-        const devMode = document.getElementById("devMode");
-        devMode.checked = !devMode.checked;
+            isSpinning = true;
+            spinBtn.disabled = true;
 
-        result.textContent = "Developer Mode " + 
-          (devMode.checked ? "Enabled" : "Disabled");
-      }
-    });
+            // Target indexes (0-indexed mapping: Option 5 is index 4, Option 6 is index 5)
+            const targetIndex = alternateTargetTriggered ? 5 : 4;
+            const chosenOptionName = options[targetIndex];
 
-    drawWheel();
+            // Lock in the outcome permanently into the user's browser storage
+            localStorage.setItem('wheel_outcome', chosenOptionName);
 
-    if (used) {
-      result.textContent = "You already used the spinner.";
-    }
-  </script>
+            // Calculate precise stopping angle so pointer (top, 270 degrees / 1.5 * Math.PI) points to target
+            const pointerAngle = 1.5 * Math.PI;
+            const targetCenterAngle = (targetIndex * arcSize) + (arcSize / 2);
+            let finalAngle = pointerAngle - targetCenterAngle;
+
+            // Normalize final angle to stay within positive bounds
+            if (finalAngle < 0) finalAngle += 2 * Math.PI;
+
+            // Add standard spin rotations (5 full loops) for visual dynamic
+            const totalRotation = finalAngle + (10 * Math.PI);
+            
+            let start = null;
+            const duration = 4000; // Animation duration in milliseconds
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const elapsed = timestamp - start;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Cubic ease-out deceleration curve
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                currentAngle = easeOut * totalRotation;
+
+                ctx.clearRect(0, 0, 400, 400);
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    resultDiv.innerText = `Result: ${chosenOptionName}`;
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+    </script>
 </body>
 </html>
